@@ -50,6 +50,7 @@ import (
 	"github.com/awslabs/eksdemo/pkg/resource/ssm_node"
 	"github.com/awslabs/eksdemo/pkg/resource/ssm_session"
 	"github.com/awslabs/eksdemo/pkg/resource/subnet"
+	"github.com/awslabs/eksdemo/pkg/resource/subnet_prefixes"
 	"github.com/awslabs/eksdemo/pkg/resource/target_group"
 	"github.com/awslabs/eksdemo/pkg/resource/target_health"
 	"github.com/awslabs/eksdemo/pkg/resource/volume"
@@ -122,6 +123,7 @@ func NewGetCmd() *cobra.Command {
 	cmd.AddCommand(ssm_node.NewResource().NewGetCmd())
 	cmd.AddCommand(ssm_session.NewResource().NewGetCmd())
 	cmd.AddCommand(subnet.NewResource().NewGetCmd())
+	cmd.AddCommand(subnet_prefixes.NewResource().NewGetCmd())
 	cmd.AddCommand(target_group.NewResource().NewGetCmd())
 	cmd.AddCommand(target_health.NewResource().NewGetCmd())
 	cmd.AddCommand(volume.NewResource().NewGetCmd())
