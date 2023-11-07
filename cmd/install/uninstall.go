@@ -11,10 +11,12 @@ import (
 	"github.com/awslabs/eksdemo/pkg/application/aws_lb_controller"
 	"github.com/awslabs/eksdemo/pkg/application/cert_manager"
 	"github.com/awslabs/eksdemo/pkg/application/cilium"
+	"github.com/awslabs/eksdemo/pkg/application/coredumphandler"
 	"github.com/awslabs/eksdemo/pkg/application/crossplane"
 	"github.com/awslabs/eksdemo/pkg/application/external_dns"
 	"github.com/awslabs/eksdemo/pkg/application/falco"
 	"github.com/awslabs/eksdemo/pkg/application/harbor"
+	"github.com/awslabs/eksdemo/pkg/application/headlamp"
 	"github.com/awslabs/eksdemo/pkg/application/keycloak_amg"
 	"github.com/awslabs/eksdemo/pkg/application/kube_state_metrics"
 	"github.com/awslabs/eksdemo/pkg/application/metrics_server"
@@ -38,6 +40,8 @@ func NewUninstallCmd() *cobra.Command {
 	cmd.AddCommand(NewUninstallAckCmd())
 	cmd.AddCommand(NewUninstallAliasCmds(ack, "ack-")...)
 	cmd.AddCommand(adot_operator.NewApp().NewUninstallCmd())
+	cmd.AddCommand(NewUninstallAICmd())
+	cmd.AddCommand(NewUninstallAliasCmds(aiApps, "ai-")...)
 	cmd.AddCommand(appmesh_controller.NewApp().NewUninstallCmd())
 	cmd.AddCommand(NewUninstallArgoCmd())
 	cmd.AddCommand(NewUninstallAliasCmds(argoApps, "argo-")...)
@@ -48,6 +52,7 @@ func NewUninstallCmd() *cobra.Command {
 	cmd.AddCommand(aws_lb_controller.NewApp().NewUninstallCmd())
 	cmd.AddCommand(cert_manager.NewApp().NewUninstallCmd())
 	cmd.AddCommand(cilium.NewApp().NewUninstallCmd())
+	cmd.AddCommand(coredumphandler.NewApp().NewUninstallCmd())
 	cmd.AddCommand(NewUninstallContainerInsightsCmd())
 	cmd.AddCommand(NewUninstallAliasCmds(containerInsightsApps, "container-insights-")...)
 	cmd.AddCommand(NewUninstallAliasCmds(containerInsightsApps, "ci-")...)
@@ -55,12 +60,13 @@ func NewUninstallCmd() *cobra.Command {
 	cmd.AddCommand(NewUninstallExampleCmd())
 	cmd.AddCommand(NewUninstallAliasCmds(exampleApps, "example-")...)
 	cmd.AddCommand(NewUninstallAliasCmds(exampleApps, "ex-")...)
-	cmd.AddCommand(external_dns.NewApp().NewUninstallCmd())
+	cmd.AddCommand(external_dns.New().NewUninstallCmd())
 	cmd.AddCommand(falco.NewApp().NewUninstallCmd())
 	cmd.AddCommand(NewUninstallFluxCmd())
 	cmd.AddCommand(NewUninstallAliasCmds(fluxApps, "flux-")...)
 	cmd.AddCommand(vpc_lattice_controller.NewApp().NewUninstallCmd())
 	cmd.AddCommand(harbor.NewApp().NewUninstallCmd())
+	cmd.AddCommand(headlamp.NewApp().NewUninstallCmd())
 	cmd.AddCommand(NewUninstallIngressCmd())
 	cmd.AddCommand(NewUninstallAliasCmds(ingressControllers, "ingress-")...)
 	cmd.AddCommand(NewUninstallIstioCmd())

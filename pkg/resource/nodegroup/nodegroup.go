@@ -25,6 +25,7 @@ func NewResource() *resource.Resource {
 					Template: eksctl.EksctlHeader + EksctlTemplate,
 				},
 				ApproveDelete: true,
+				CreateFlags:   []string{"--install-nvidia-plugin=false", "--install-neuron-plugin=false"},
 			},
 		},
 	}
@@ -41,6 +42,7 @@ managedNodeGroups:
   ami: {{ .AMI }}
 {{- end }}
   amiFamily: {{ .OperatingSystem }}
+  desiredCapacity: {{ .DesiredCapacity }}
   iam:
     attachPolicyARNs:
     - arn:{{ .Partition }}:iam::aws:policy/AmazonEKSWorkerNodePolicy
@@ -54,13 +56,18 @@ managedNodeGroups:
   instanceType: {{ .InstanceType }}
 {{- end }}
   minSize: {{ .MinSize }}
-  desiredCapacity: {{ .DesiredCapacity }}
   maxSize: {{ .MaxSize }}
-{{- if .Containerd }}
+{{- if .AMI }}
   overrideBootstrapCommand: |
     #!/bin/bash
-    /etc/eks/bootstrap.sh {{ .ClusterName }} --container-runtime containerd
+    /etc/eks/bootstrap.sh {{ .ClusterName }}
 {{- end }}
   privateNetworking: true
   spot: {{ .Spot }}
+{{- range .Taints }}
+  taints:
+  - key: {{ .Key }}
+    value: {{ .Value | printf "%q" }}
+    effect: {{ .Effect }}
+{{- end }}
 `

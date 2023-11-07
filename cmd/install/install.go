@@ -11,10 +11,12 @@ import (
 	"github.com/awslabs/eksdemo/pkg/application/aws_lb_controller"
 	"github.com/awslabs/eksdemo/pkg/application/cert_manager"
 	"github.com/awslabs/eksdemo/pkg/application/cilium"
+	"github.com/awslabs/eksdemo/pkg/application/coredumphandler"
 	"github.com/awslabs/eksdemo/pkg/application/crossplane"
 	"github.com/awslabs/eksdemo/pkg/application/external_dns"
 	"github.com/awslabs/eksdemo/pkg/application/falco"
 	"github.com/awslabs/eksdemo/pkg/application/harbor"
+	"github.com/awslabs/eksdemo/pkg/application/headlamp"
 	"github.com/awslabs/eksdemo/pkg/application/keycloak_amg"
 	"github.com/awslabs/eksdemo/pkg/application/kube_state_metrics"
 	"github.com/awslabs/eksdemo/pkg/application/metrics_server"
@@ -38,6 +40,8 @@ func NewInstallCmd() *cobra.Command {
 	cmd.AddCommand(NewInstallAckCmd())
 	cmd.AddCommand(NewInstallAliasCmds(ack, "ack-")...)
 	cmd.AddCommand(adot_operator.NewApp().NewInstallCmd())
+	cmd.AddCommand(NewInstallAICmd())
+	cmd.AddCommand(NewInstallAliasCmds(aiApps, "ai-")...)
 	cmd.AddCommand(appmesh_controller.NewApp().NewInstallCmd())
 	cmd.AddCommand(NewInstallArgoCmd())
 	cmd.AddCommand(NewInstallAliasCmds(argoApps, "argo-")...)
@@ -48,6 +52,7 @@ func NewInstallCmd() *cobra.Command {
 	cmd.AddCommand(aws_lb_controller.NewApp().NewInstallCmd())
 	cmd.AddCommand(cert_manager.NewApp().NewInstallCmd())
 	cmd.AddCommand(cilium.NewApp().NewInstallCmd())
+	cmd.AddCommand(coredumphandler.NewApp().NewInstallCmd())
 	cmd.AddCommand(NewInstallContainerInsightsCmd())
 	cmd.AddCommand(NewInstallAliasCmds(containerInsightsApps, "container-insights-")...)
 	cmd.AddCommand(NewInstallAliasCmds(containerInsightsApps, "ci-")...)
@@ -55,12 +60,13 @@ func NewInstallCmd() *cobra.Command {
 	cmd.AddCommand(NewInstallExampleCmd())
 	cmd.AddCommand(NewInstallAliasCmds(exampleApps, "example-")...)
 	cmd.AddCommand(NewInstallAliasCmds(exampleApps, "ex-")...)
-	cmd.AddCommand(external_dns.NewApp().NewInstallCmd())
+	cmd.AddCommand(external_dns.New().NewInstallCmd())
 	cmd.AddCommand(falco.NewApp().NewInstallCmd())
 	cmd.AddCommand(NewInstallFluxCmd())
 	cmd.AddCommand(NewInstallAliasCmds(fluxApps, "flux-")...)
 	cmd.AddCommand(vpc_lattice_controller.NewApp().NewInstallCmd())
 	cmd.AddCommand(harbor.NewApp().NewInstallCmd())
+	cmd.AddCommand(headlamp.NewApp().NewInstallCmd())
 	cmd.AddCommand(NewInstallIngressCmd())
 	cmd.AddCommand(NewInstallAliasCmds(ingressControllers, "ingress-")...)
 	cmd.AddCommand(NewInstallIstioCmd())

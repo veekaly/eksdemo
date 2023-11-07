@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/awslabs/eksdemo/pkg/aws"
 	"github.com/awslabs/eksdemo/pkg/cmd"
 	"github.com/awslabs/eksdemo/pkg/resource"
@@ -14,24 +15,38 @@ import (
 // /aws/service/eks/optimized-ami/<eks-version>/amazon-linux-2/recommended/image_id
 const eksOptmizedAmiPath = "/aws/service/eks/optimized-ami/%s/amazon-linux-2/recommended/image_id"
 
+// /aws/service/eks/optimized-ami/<eks-version>/amazon-linux-2-arm64/recommended/image_id
+const eksOptmizedArmAmiPath = "/aws/service/eks/optimized-ami/%s/amazon-linux-2-arm64/recommended/image_id"
+
+// /aws/service/eks/optimized-ami/<eks-version>/amazon-linux-2-gpu/recommended/image_id
+const eksOptmizedGpuAmiPath = "/aws/service/eks/optimized-ami/%s/amazon-linux-2-gpu/recommended/image_id"
+
 type NodegroupOptions struct {
 	*resource.CommonOptions
 
-	AMI             string
-	InstanceType    string
-	Containerd      bool
-	DesiredCapacity int
-	MinSize         int
-	MaxSize         int
-	NodegroupName   string
-	OperatingSystem string
-	Spot            bool
-	SpotvCPUs       int
-	SpotMemory      int
+	AMI              string
+	InstanceType     string
+	IsClusterPrivate bool
+	DesiredCapacity  int
+	MinSize          int
+	MaxSize          int
+	NodegroupName    string
+	NoTaints         bool
+	OperatingSystem  string
+	Spot             bool
+	SpotvCPUs        int
+	SpotMemory       int
+	Taints           []Taint
 
 	UpdateDesired int
 	UpdateMin     int
 	UpdateMax     int
+}
+
+type Taint struct {
+	Key    string
+	Value  string
+	Effect string
 }
 
 func NewOptions() (options *NodegroupOptions, createFlags, updateFlags cmd.Flags) {
@@ -47,27 +62,15 @@ func NewOptions() (options *NodegroupOptions, createFlags, updateFlags cmd.Flags
 	}
 
 	createFlags = cmd.Flags{
-		&cmd.BoolFlag{
-			CommandFlag: cmd.CommandFlag{
-				Name:        "containerd",
-				Description: "use containerd runtime",
-				Validate: func(cmd *cobra.Command, args []string) error {
-					if !options.Containerd {
-						return nil
-					}
-					if v := options.Common().KubernetesVersion; v == "1.23" || v == "1.22" || v == "1.21" {
-						return nil
-					}
-					return fmt.Errorf("%q flag not supported for EKS versions 1.24 and later", "containerd")
-				},
-			},
-			Option: &options.Containerd,
-		},
 		&cmd.StringFlag{
 			CommandFlag: cmd.CommandFlag{
 				Name:        "instance",
 				Description: "instance type",
 				Shorthand:   "i",
+				Validate: func(cmd *cobra.Command, args []string) error {
+					options.InstanceType = strings.ToLower(options.InstanceType)
+					return nil
+				},
 			},
 			Option: &options.InstanceType,
 		},
@@ -108,6 +111,13 @@ func NewOptions() (options *NodegroupOptions, createFlags, updateFlags cmd.Flags
 			},
 			Option: &options.DesiredCapacity,
 		},
+		&cmd.BoolFlag{
+			CommandFlag: cmd.CommandFlag{
+				Name:        "no-taints",
+				Description: "don't taint nodes with GPUs or Neuron cores",
+			},
+			Option: &options.NoTaints,
+		},
 		&cmd.StringFlag{
 			CommandFlag: cmd.CommandFlag{
 				Name:        "os",
@@ -124,9 +134,6 @@ func NewOptions() (options *NodegroupOptions, createFlags, updateFlags cmd.Flags
 					}
 					if strings.EqualFold(options.OperatingSystem, "Ubuntu1804") {
 						options.OperatingSystem = "Ubuntu1804"
-					}
-					if options.Containerd && options.OperatingSystem != "AmazonLinux2" {
-						return fmt.Errorf("%q flag can only be used with %q Operating System", "containerd", "AmazonLinux2")
 					}
 					return nil
 				},
@@ -165,16 +172,82 @@ func NewOptions() (options *NodegroupOptions, createFlags, updateFlags cmd.Flags
 }
 
 func (o *NodegroupOptions) PreCreate() error {
-	if !o.Containerd {
+	instanceTypes, err := aws.NewEC2Client().DescribeInstanceTypes(
+		[]types.Filter{aws.NewEC2InstanceTypeFilter(o.InstanceType)},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to describe instance types: %w", err)
+	}
+
+	if len(instanceTypes) != 1 {
+		return fmt.Errorf("%q is not a valid instance type in region %q", o.InstanceType, o.Region)
+	}
+
+	var isGraviton, isNeuron, isNvidia bool
+	instType := strings.Split(o.InstanceType, ".")[0]
+
+	switch {
+	case strings.HasPrefix(instType, "g"),
+		strings.HasPrefix(instType, "p"):
+
+		isNvidia = true
+
+	case strings.HasPrefix(instType, "inf"),
+		strings.HasPrefix(instType, "trn"):
+
+		isNeuron = true
+
+	case strings.HasSuffix(instType, "g"),
+		strings.HasSuffix(instType, "gd"),
+		strings.HasSuffix(instType, "gn"),
+		strings.HasSuffix(instType, "gen"):
+
+		isGraviton = true
+	}
+
+	if isNeuron && !o.NoTaints {
+		o.Taints = append(o.Taints, Taint{Key: "aws.amazon.com/neuron", Effect: "NoSchedule"})
+	}
+
+	if isNvidia && !o.NoTaints {
+		o.Taints = append(o.Taints, Taint{Key: "nvidia.com/gpu", Effect: "NoSchedule"})
+	}
+
+	// AMI Lookup is currently only for Amazon Linux 2 EKS Optimized AMI and clusters that aren't fully private
+	if o.OperatingSystem != "AmazonLinux2" || o.IsClusterPrivate {
 		return nil
 	}
 
-	param, err := aws.NewSSMClient().GetParameter(fmt.Sprintf(eksOptmizedAmiPath, o.KubernetesVersion))
-	if err != nil {
-		return fmt.Errorf("ssm failed to lookup EKS Optimized AMI: %w", err)
-	}
+	ssmClient := aws.NewSSMClient()
 
-	o.AMI = awssdk.ToString(param.Value)
+	switch {
+	case instType == "g5g":
+		return fmt.Errorf("%q instance type is not supported with the EKS optimized Amazon Linux AMI", "G5g")
+
+	case isNeuron, isNvidia:
+		param, err := ssmClient.GetParameter(fmt.Sprintf(eksOptmizedGpuAmiPath, o.KubernetesVersion))
+		if err != nil {
+			return fmt.Errorf("failed to lookup EKS optimized accelerated AMI for instance type %s: %w", o.InstanceType, err)
+		}
+
+		o.AMI = awssdk.ToString(param.Value)
+
+	case isGraviton:
+		param, err := ssmClient.GetParameter(fmt.Sprintf(eksOptmizedArmAmiPath, o.KubernetesVersion))
+		if err != nil {
+			return fmt.Errorf("failed to lookup EKS optimized ARM AMI for instance type %s: %w", o.InstanceType, err)
+		}
+
+		o.AMI = awssdk.ToString(param.Value)
+
+	default:
+		param, err := ssmClient.GetParameter(fmt.Sprintf(eksOptmizedAmiPath, o.KubernetesVersion))
+		if err != nil {
+			return fmt.Errorf("failed to lookup EKS optimized AMI for instance type %s: %w", o.InstanceType, err)
+		}
+
+		o.AMI = awssdk.ToString(param.Value)
+	}
 
 	return nil
 }

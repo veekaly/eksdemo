@@ -130,6 +130,7 @@ The application catalog includes:
     * `cloudwatch-agent` — Container Insights CloudWatch Agent Metrics
     * `fluent-bit` — Container Insights Fluent Bit Logs
     * `prometheus` — CloudWatch Container Insights monitoring for Prometheus
+* `core-dump-handler` - Automatically saves core dumps to S3
 * `crossplane` — Cloud Native Control Planes
 * `example` — Example Applications
     * `eks-workshop` — EKS Workshop Example Microservices
@@ -143,6 +144,7 @@ The application catalog includes:
     * `controllers` — Flux Controllers
     * `sync` — Flux GitRepository to sync with
 * `harbor` — Cloud Native Registry
+* `headlamp` - An easy-to-use and extensible Kubernetes web UI
 * `ingress` — Ingress Controllers
     * `contour` — Ingress Controller using Envoy proxy
     * `emissary` — Open Source API Gateway from Ambassador
@@ -281,8 +283,8 @@ To validate the AWS region is set, you can run **`eksdemo get cluster`** which w
 +------------+--------+---------+---------+----------+----------+
 |    Age     | Status | Cluster | Version | Platform | Endpoint |
 +------------+--------+---------+---------+----------+----------+
-| 3 weeks    | ACTIVE | green   |    1.24 | eks.5    | Public   |
-| 20 minutes | ACTIVE | *blue   |    1.27 | eks.1    | Public   |
+| 3 weeks    | ACTIVE | green   |    1.26 | eks.5    | Public   |
+| 20 minutes | ACTIVE | *blue   |    1.28 | eks.1    | Public   |
 +------------+--------+---------+---------+----------+----------+
 * Indicates current context in local kubeconfig
 ```

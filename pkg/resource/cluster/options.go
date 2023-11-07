@@ -28,14 +28,15 @@ type ClusterOptions struct {
 	resource.CommonOptions
 	*nodegroup.NodegroupOptions
 
-	Fargate          bool
-	HostnameType     string
-	IPv6             bool
-	Kubeconfig       string
-	NoRoles          bool
-	PrefixAssignment bool
-	Private          bool
-	VpcCidr          string
+	DisableNetworkPolicy bool
+	Fargate              bool
+	HostnameType         string
+	IPv6                 bool
+	Kubeconfig           string
+	NoRoles              bool
+	PrefixAssignment     bool
+	Private              bool
+	VpcCidr              string
 
 	appsForIrsa  []*application.Application
 	IrsaTemplate *template.TextTemplate
@@ -48,7 +49,7 @@ func addOptions(res *resource.Resource) *resource.Resource {
 	options := &ClusterOptions{
 		CommonOptions: resource.CommonOptions{
 			ClusterFlagDisabled: true,
-			KubernetesVersion:   "1.27",
+			KubernetesVersion:   "1.28",
 		},
 
 		HostnameType:     string(types.HostnameTypeResourceName),
@@ -59,7 +60,7 @@ func addOptions(res *resource.Resource) *resource.Resource {
 		appsForIrsa: []*application.Application{
 			aws_lb_controller.NewApp(),
 			ebs_csi.NewApp(),
-			external_dns.NewApp(),
+			external_dns.New(),
 			karpenter.NewApp(),
 		},
 		IrsaTemplate: &template.TextTemplate{
@@ -87,8 +88,15 @@ func addOptions(res *resource.Resource) *resource.Resource {
 				Description: "Kubernetes version",
 				Shorthand:   "v",
 			},
-			Choices: []string{"1.27", "1.26", "1.25", "1.24", "1.23"},
+			Choices: []string{"1.28", "1.27", "1.26", "1.25", "1.24"},
 			Option:  &options.KubernetesVersion,
+		},
+		&cmd.BoolFlag{
+			CommandFlag: cmd.CommandFlag{
+				Name:        "disable-network-policy",
+				Description: "don't enable network policy for Amazon VPC CNI",
+			},
+			Option: &options.DisableNetworkPolicy,
 		},
 		&cmd.BoolFlag{
 			CommandFlag: cmd.CommandFlag{
@@ -135,7 +143,7 @@ func addOptions(res *resource.Resource) *resource.Resource {
 		&cmd.BoolFlag{
 			CommandFlag: cmd.CommandFlag{
 				Name:        "prefix-assignment",
-				Description: "configured VPC CNI for prefix assignment",
+				Description: "configure VPC CNI for prefix assignment",
 			},
 			Option: &options.PrefixAssignment,
 		},
@@ -171,6 +179,8 @@ func (o *ClusterOptions) PreCreate() error {
 	o.Account = aws.AccountId()
 	o.Partition = aws.Partition()
 	o.Region = aws.Region()
+
+	o.NodegroupOptions.IsClusterPrivate = o.Private
 	o.NodegroupOptions.KubernetesVersion = o.KubernetesVersion
 
 	// For apps we want to pre-create IRSA for, find the IRSA dependency
